@@ -177,11 +177,19 @@ export default function GamePage({ params }: { params: { id: string } }) {
       return
     }
 
-    // In a real game, we would validate the word(s) here
-    // and calculate the score
+    // Validate words
+    const validation = validateWords(gameState.board, placedTiles);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid move",
+        description: validation.error,
+        variant: "destructive",
+      })
+      return;
+    }
 
-    // For this demo, we'll just add a simple score
-    const score = placedTiles.reduce((total, { tile }) => total + tile.value, 0)
+    // Calculate score with proper Scrabble rules
+    const score = calculateScore(gameState.board, placedTiles);
 
     // Update player score
     const updatedPlayers = gameState.players.map((player) => {

@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function JoinGamePage() {
   const router = useRouter()
   const [playerName, setPlayerName] = useState("")
   const [gameId, setGameId] = useState("")
   const [isJoining, setIsJoining] = useState(false)
+  const { toast } = useToast()
 
   const handleJoinGame = async () => {
     if (!playerName.trim() || !gameId.trim()) return
@@ -19,14 +21,38 @@ export default function JoinGamePage() {
     setIsJoining(true)
 
     try {
-      // In a real implementation, we would validate the game ID on the server
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Validate game ID format
+      const formattedGameId = gameId.toUpperCase().trim()
+      if (!/^[A-Z0-9]{6}$/.test(formattedGameId)) {
+        throw new Error("Invalid game code format. Must be 6 characters.")
+      }
+
+      // Call API to validate and join game
+      const response = await fetch('/api/game/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gameId: formattedGameId,
+          playerName: playerName.trim()
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to join game')
+      }
 
       // Navigate to the game
-      router.push(`/game/${gameId.toUpperCase()}?name=${encodeURIComponent(playerName)}`)
+      router.push(`/game/${formattedGameId}?name=${encodeURIComponent(playerName.trim())}`)
     } catch (error) {
       console.error("Failed to join game:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to join game",
+        variant: "destructive"
+      })
       setIsJoining(false)
     }
   }

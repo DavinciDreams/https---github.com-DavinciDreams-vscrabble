@@ -6,29 +6,43 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function NewGamePage() {
   const router = useRouter()
   const [playerName, setPlayerName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+  const { toast } = useToast()
 
   const handleCreateGame = async () => {
     if (!playerName.trim()) return
-
     setIsCreating(true)
 
     try {
-      // In a real implementation, we would create a game on the server
-      // and get back a game ID
-      const gameId = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const response = await fetch('/api/game/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerName: playerName.trim(),
+        }),
+      })
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to create game')
+      }
 
-      // Navigate to the game with the generated ID
-      router.push(`/game/${gameId}?name=${encodeURIComponent(playerName)}`)
+      const { gameId } = await response.json()
+      router.push(`/game/${gameId}?name=${encodeURIComponent(playerName.trim())}`)
     } catch (error) {
       console.error("Failed to create game:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create game",
+        variant: "destructive"
+      })
       setIsCreating(false)
     }
   }
