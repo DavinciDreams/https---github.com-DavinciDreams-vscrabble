@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useMobile } from "@/hooks/use-mobile"
 import { initialGameState } from "@/lib/game-utils"
 import type { GameState, Player, Tile } from "@/lib/types"
+import Pusher from 'pusher-js';
+import type { Channel } from 'pusher-js';
 
 export default function GamePage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams()
@@ -23,15 +25,25 @@ export default function GamePage({ params }: { params: { id: string } }) {
   const [selectedTile, setSelectedTile] = useState<Tile | null>(null)
   const [placedTiles, setPlacedTiles] = useState<{ row: number; col: number; tile: Tile }[]>([])
   const [isConnected, setIsConnected] = useState(false)
+  const [pusherClient, setPusherClient] = useState<Pusher | null>(null);
+  const [pusherChannel, setPusherChannel] = useState<Channel | null>(null);
 
   // Initialize player
   useEffect(() => {
     // In a real app, we would connect to Pusher here
     const initGame = async () => {
       try {
-        // Simulate connecting to realtime service
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setIsConnected(true)
+        // Initialize Pusher client
+        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        });
+        
+        // Subscribe to the game channel
+        const channel = pusher.subscribe(`game-${gameId}`);
+        
+        setPusherClient(pusher);
+        setPusherChannel(channel);
+        setIsConnected(true);
 
         // Add current player to the game
         const currentPlayer: Player = {
@@ -66,7 +78,14 @@ export default function GamePage({ params }: { params: { id: string } }) {
 
     // Cleanup function
     return () => {
-      // In a real app, we would disconnect from Pusher here
+      // Disconnect from Pusher
+      if (pusherChannel) {
+        pusherChannel.unbind_all();
+        pusherChannel.unsubscribe();
+      }
+      if (pusherClient) {
+        pusherClient.disconnect();
+      }
     }
   }, [gameId, playerName, toast])
 
